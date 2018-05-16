@@ -1,0 +1,63 @@
+// Ceci est un exemple pour un serveur d'écho simple implémenté dans Node.js. Il
+// montre comment écrire du code asynchrone monothread qui permet
+// un serveur pour communiquer simultanément avec plusieurs clients.
+//
+// readline est un module qui nous donne la possibilité de consommer une ligne de flux
+// par ligne
+
+
+var net =  require ( ' net ' );   // API qui est un module javaScript qui nous permettra de creer un serveur TCP
+var readline =  require ( ' readline ' );   // readline est un module qui nous donne la possibilité de consommer une ligne de flux
+
+// créons un serveur TCP
+serveur var =  net.createServer ();
+
+// il peut réagir aux événements: 'écoute', 'connexion', 'fermer' et 'erreur'
+// enregistrons nos méthodes de rappel; ils seront invoqués lorsque les événements
+// se produire (tout se passe sur le même thread)
+serveur . on ( ' écoute ' , callbackFunctionToCallWhenSocketIsBound);
+serveur . on ( ' connection ' , callbackFunctionToCallWhenNewClientHasArrived);
+
+// nous sommes prêts, alors demandons au serveur de commencer à écouter sur le port 9907
+serveur . écoute (9907);
+
+// Cette méthode de rappel est appelée après que le socket a été lié et est en
+// mode d'écoute. Nous n'avons pas besoin de faire quelque chose
+de spécial.
+function  callbackFunctionToCallWhenSocketIsBound () {
+	console . log ( " Le socket est lié et le serveur écoute les demandes de connexion. " );
+	console . log ( " valeur de sertissage:% j " , le serveur . répondre ());
+}
+
+// Cette méthode de rappel est appelée après l'acceptation d'une connexion client.
+// Nous recevons le socket en paramètre. Nous devons attacher une fonction de rappel à la
+// Evénement 'data' pouvant être déclenché sur le socket.
+function  callbackFunctionToCallWhenNewClientHasArrived ( socket ) {
+
+	// Nous enveloppons une interface readline autour des flux d'E / S socket; chaque octet arrivant
+	// sur le socket sera transmis à l'interface readline, qui prendra soin
+	// de mise en mémoire tampon des données et recherchera des séparateurs de fin de ligne. Nous ne nous enregistrerons pas
+	// un gestionnaire de callback sur le socket (c'est une possibilité), mais plutôt sur la readline
+	// interface. Les événements 'line' sont déclenchés chaque fois qu'une nouvelle ligne est disponible.
+	var rl =  readline . createInterface ({
+	  entrée : socket,
+	  sortie : socket
+	});
+
+	rl . on ( ' line ' , callbackFunctionToCallWhenNewDataIsAvailable);
+
+	// Cette méthode de rappel est appelée lorsque de nouvelles données sont disponibles sur le socket
+	// Nous pouvons le traiter, ce qui dans notre cas signifie simplement le déverser sur la console
+	function  callbackFunctionToCallWhenNewDataIsAvailable ( données ) {
+		console . log ( "Le client a envoyé: "  + données);
+		si ( données . toString (). toUpperCase () ==  ' BYE ' ) {
+			console . log ( "Le client a envoyé 'bye', fermeture de la connexion ... " );
+			socket . fin ();
+		} else {
+			socket . écrire ( données . toString (). toUpperCase () +  ' \ n ' );
+		}
+	}
+
+  console . log ( ' Un client est arrivé: '  +  douille . remoteAddress  +  " : "  +  douille . portDistant );
+
+}

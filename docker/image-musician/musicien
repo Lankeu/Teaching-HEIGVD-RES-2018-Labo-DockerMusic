@@ -1,0 +1,108 @@
+
+ //------------------------------------------------------------------------------
+// Loading extern modules
+
+var schedule = require("node-schedule");  // c'est pour la definition des regles pour la frequence d'envoi des paquet
+var dgram    = require("dgram");  // creation d'unn socket là où , je dois envoyer et recevoir les données.
+var socket   = dgram.createSocket("udp4");  // creation du socket
+
+// ici, on precise l'adresse et le port sur lesquelles le musicien doit diffuser
+const Protocol = 
+{
+  PORT              : 2222,
+  MULTICAST_ADDRESS : "239.255.22.5"
+};
+
+// definit la liste des instruments pouvant etre utiiliser par un musicien
+const INSTRUMENTS = ["piano", "trumpet", "flute", "violin", "drum"];
+
+// on procede ensuite à un mapping entre l'instrument de musique et son son 
+var Sounds = {
+  piano   : "ti-ta-ti",
+  trumpet : "pouet",
+  flute   : "trulu",
+  violin  : "gzi-gzi",
+  drum    : "boum-boum"
+};
+
+var playload;   // string JSON sent by UDP
+var message;    // buffer that contains the string JSON sent by UDP
+var instrument; // the instrument of the musician
+var argument;   // the argument that is passed on the script
+var musician;   // the musician who plays an instrument
+var measure;
+
+
+/**
+ * Class that represents an instrument
+ */
+function Instrument(name, sound) {
+  this.name = name;
+  this.sound = sound;
+}
+
+/**
+ * Class that represents a musician
+ */
+function Musician(uuid, instrument) {
+  this.uuid = uuid;
+  this.instrument = instrument;
+}
+
+/**
+ * Function UUID generator
+ * source code from : https://gist.github.com/jcxplorer/823878
+ */
+function uuid() {
+  var uuid = "", i, random;
+  for (i = 0; i < 32; i++) {
+    random = Math.random() * 16 | 0;
+
+    if (i == 8 || i == 12 || i == 16 || i == 20) 
+	{
+      uuid += "-"
+    }
+    uuid += (i == 12 ? 4 : (i == 16 ? (random & 3 | 8) : random)).toString(16);
+  }
+  return uuid;
+}
+
+
+
+// si l'argument saisi en parametre est omi, on renvoit une erreur
+if (typeof process.argv[2] === "undefined") {
+  console.log("Error: missing argument for instrument");
+  return;
+}
+
+// on recupere l'argument , puis converti en minuscule
+argument = process.argv[2].toLowerCase();
+
+/* if the argument doesn't match with any instruments then we print an error
+   and we exit the program, else we create the instrument */
+if (~INSTRUMENTS.indexOf(argument)) {
+  instrument = new Instrument(argument, Sounds[argument]);
+} else {
+  console.log("Error: instrument \"" + argument + "\" doesn't exist");
+  return;
+}
+
+//var date = new Date();
+//var Timejson = JSON.stringify(date);
+
+musician = new Musician(uuid(), instrument);	
+/* create the JSON string sent by datagram UDP */
+playload = JSON.stringify({uuid : musician.uuid, sound : musician.instrument.sound});
+// encapsulation du payload
+message  = new Buffer(playload);
+
+/* create a rule that must to be execute every 1 seconds */
+var rule    = new schedule.RecurrenceRule();
+rule.second = new schedule.Range(0, 59);
+
+/* we use this rule to send every 1 seconds a datagram UDP
+   which contains the JSON string */
+schedule.scheduleJob(rule, function() {
+  socket.send(message, 0, message.length,	Protocol.PORT, Protocol.MULTICAST_ADDRESS);
+  console.log(playload);
+});
